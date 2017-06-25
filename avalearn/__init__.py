@@ -1,7 +1,1 @@
-#!/usr/bin/python
-"""
-
-
-__author__ = "Jason Wolosonovich"
-__email__ = "jason@avaland.io"
-"""
+from .version import __version__, __author__, __email__, __license__
