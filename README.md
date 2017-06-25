@@ -1,1 +1,1 @@
-### python version of the R vtreat package which provides excellent data preprocessing and treatment routines**
+### a supplemental library for machine learning that incorporates various conveniences and functionalities either missing or not presently combined within the python ecosystem
