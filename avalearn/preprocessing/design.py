@@ -4,7 +4,9 @@ data_prep.py: classes for designing data treatment.
 """
 import pandas as pd
 
-from .mixins import TreatmentDesignMixin
+from .base import TreatmentDesignMixin
+
+
 
 class ClassificationTreatmentDesign(TreatmentDesignMixin):
     """
@@ -29,17 +31,3 @@ class RegressionTreatmentDesign(TreatmentDesignMixin):
 
     def fit(self, dataframe):
         super().fit(dataframe)
-
-
-
-class TreatmentDescriptionDF(pd.DataFrame):
-    """
-    pd.DataFrame that holds descriptive information about the proposed
-    treatment.
-    """
-    def __init__(self):
-        # columns for the treament plan description df
-        columns = ["new_variable_name", "new_variable_significance",
-                   "extra_degrees_of_freedom", "original_variable",
-                   "transformation_type"]
-        super().__init__(columns=columns)
