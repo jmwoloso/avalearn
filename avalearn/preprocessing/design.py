@@ -13,7 +13,7 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
     Class for designing treatments for classification tasks.
     """
     def __init__(self, feature_columns="all", target_column=-1,
-                 min_feature_significance=None, positive_class=1):
+                 min_feature_significance=0.05, positive_class=1):
         """
 
         Parameters
@@ -26,10 +26,11 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
          default=-1; required.
             The column name or column index where the target resides.
 
-        min_feature_significance : one of {None, float in range(0,1); default=None; required.
+        min_feature_significance : one of {float in range(0, 1), None}; default=0.05; required.
             If `None`, no feature pruning will take place otherwise this is
             the minimum significance level a feature needs in order to be
-            included in the final treated dataframe.
+            included in the final treated dataframe where lower values
+            indicate more significance.
 
         positive_class : int; default=1; required.
             The value of the positive class for regression tasks.
@@ -113,7 +114,7 @@ class RegressionTreatmentDesign(TreatmentDesignMixin):
     Class for designing treatments for regression tasks.
     """
     def __init__(self, feature_columns="all", target_column=-1,
-                 min_feature_significance=None):
+                 min_feature_significance=0.05):
         """
 
         Parameters
@@ -129,7 +130,8 @@ class RegressionTreatmentDesign(TreatmentDesignMixin):
         min_feature_significance : one of {None, float in range(0,1); default=None; required.
             If `None`, no feature pruning will take place otherwise this is
             the minimum significance level a feature needs in order to be
-            included in the final treated dataframe.
+            included in the final treated dataframe where lower values
+            indicate more significance.
 
         Attributes
         ----------

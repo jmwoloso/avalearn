@@ -38,7 +38,7 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
     """
 
     def __init__(self, feature_columns="all", target_column=-1,
-                 min_feature_significance=None):
+                 min_feature_significance=0.05):
 
         # TODO: ensure all params, attrs, etc. are documented
         self.feature_columns = feature_columns
