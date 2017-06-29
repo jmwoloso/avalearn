@@ -39,59 +39,7 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
 
     def __init__(self, feature_columns="all", target_column=-1,
                  min_feature_significance=None):
-        """
 
-        Parameters
-        ----------
-        treatment_columns : one of {list of column names, list of column indices, "all"};
-         default="all"; required.
-            The columns that should be used during treatment design.
-
-        target_column : one of {target column name; target column index};
-         default=-1; required.
-            The column name or column index where the target resides.
-
-        min_feature_significance : one of {None, float in range(0,1); default=None; required.
-            If `None`, no feature pruning will take place otherwise this is
-            the minimum significance level a feature needs in order to be
-            included in the final treated dataframe.
-
-        Attributes
-        ----------
-        df_ : pandas.DataFrame.
-            The original pandas.DataFrame used for treatment design.
-
-        features_ : pandas.DataFrame.
-            The subset of features that need treating.
-
-        target_ : pandas.DataFrame.
-            The target column.
-
-        numeric_features_ : pandas.DataFrame.
-            The numeric features in the dataframe.
-
-        categorical_features_ : pandas.DataFrame.
-            The categorical features in the dataframe.
-
-        treatment_description_ : pandas.DataFrame-like.
-            A DataFrame-like object containing information about the proposed
-            treatment for the subset of features.
-
-        treatment_plan_ : pandas.DataFrame-like.
-            Augmented pandas.DataFrame constructed to accommodate lazy
-            evaluation of the treatment plan after design.
-
-        drop_features_ : Bool
-            Whether to drop insignificant features or not.
-
-
-        Notes
-        -----
-
-        References
-        ----------
-
-        """
         # TODO: ensure all params, attrs, etc. are documented
         self.feature_columns = feature_columns
         self.target_column = target_column
@@ -100,17 +48,7 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
 
     def fit(self, dataframe):
         """
-        Analyze the dataframe, gather descriptive information and design the treatment.
-
-        Parameters
-        ----------
-        dataframe : pandas.DataFrame instance.
-            The dataframe to be used for treatment design.
-
-        Returns
-        -------
-        self : object
-            Returns self.
+        Create the treatment plan.
         """
         # TODO: add versionadded markers
         # TODO: create base transformer that has basic functionality
@@ -165,17 +103,6 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
     def transform(self, dataframe):
         """
         Apply the treatment to the dataframe.
-
-        Parameters
-        ----------
-        dataframe : pandas.DataFrame instance; required.
-            The dataframe to be transformed using the designed treatment.
-
-        Returns
-        -------
-        T : pandas.DataFrame instance.
-            A dataframe with treatments applied to original data.
-
         """
         # TODO: document all params, attrs, returns, etc.
         # TODO: may need to implement this differently for numeric versus categorical targets (i.e. not here)
