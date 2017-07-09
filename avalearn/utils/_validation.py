@@ -12,7 +12,6 @@ def _check_dframe(dataframe=None):
     """
     if not isinstance(dataframe, pandas.DataFrame):
         raise TypeError("`dataframe` should be of type pandas.DataFrame")
-    return dataframe
 
 
 def _check_feature_target(df_columns=None, features=None, target=None):
