@@ -100,6 +100,10 @@ def _check_column_dtypes(dataframe=None, features=None, target=None,
 
 
 def _check_train_test_size(train_size=None, test_size=None):
+    """
+    Validates the values passed for train_size or test_size and sets the
+    train_size_ and test_size_ attributes.
+    """
     if test_size is not None:
         if not isinstance(test_size, float):
             raise TypeError("`test_size` should be of type <float>")
