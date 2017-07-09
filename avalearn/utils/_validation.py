@@ -75,3 +75,25 @@ def _check_feature_target(df_columns=None, features=None, target=None):
                     target_ = features_[target]
                     features_ = features[:target] if target > 0 else features[target + 1:]
     return features_, target_
+
+
+def _check_column_dtypes(dataframe=None, features=None, target=None,
+                         convert_dtypes=True):
+    """
+    Separates numeric from categorical columns; attempts to convert
+    categorical columns to numeric if `convert_dtypes=True`.
+    """
+    if convert_dtypes not in {True, False}:
+        raise ValueError("`convert_dtypes` must be one of {True, False}")
+    if convert_dtypes is True:
+        for column, _ in dataframe.iteritems():
+            try:
+                dataframe.loc[:, column] = dataframe.loc[:, column] \
+                    .astype(float)
+            except ValueError:
+                pass
+    numeric_ = dataframe.loc[:, features].select_dtypes(include=[
+        'float', 'int']).columns
+    categorical_ = dataframe.loc[:, features].select_dtypes(
+        include=['object']).columns
+    return numeric_, categorical_
