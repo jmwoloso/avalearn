@@ -2,10 +2,9 @@
 """
 _validation.py : validation routines for the avalearn package.
 """
-import numpy
 import pandas
 
-# checks if we were passed a dataframe
+
 def _check_dframe(dataframe=None):
     """
     Verifies we were passed a dataframe.
@@ -123,3 +122,26 @@ def _check_train_test_size(train_size=None, test_size=None):
         test_size_ = 1 - train_size_
 
     return train_size_, test_size_
+
+
+def _check_significance(n_features=None, significance=None):
+    """
+    Validates the min_feature_significance parameter and sets the
+    feature_significance and remove_features_ attributes.
+    """
+    if significance is None:
+        feature_significance_ = significance
+    if significance == "1/n_features":
+        feature_significance_ = 1.0 / n_features
+    sig_type = type(significance)
+    if sig_type == str:
+        raise ValueError("`min_feature_significance` should be one of [float in the interval (0, 1), '1/n_features', None]")
+    if sig_type != float:
+        raise ValueError("`min_feature_significance` should be one of [float in the interval (0, 1), '1/n_features', None]")
+    if sig_type == float and not 0.0 < significance < 1.0:
+        raise ValueError("`min_feature_significance` should be type <float> "
+                         "in the interval (0.0, 1.0)")
+
+    remove_features_ = False if feature_significance_ is None else True
+
+    return feature_significance_, remove_features_
