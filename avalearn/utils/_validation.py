@@ -97,3 +97,25 @@ def _check_column_dtypes(dataframe=None, features=None, target=None,
     categorical_ = dataframe.loc[:, features].select_dtypes(
         include=['object']).columns
     return numeric_, categorical_
+
+
+def _check_train_test_size(train_size=None, test_size=None):
+    if test_size is not None:
+        if not isinstance(test_size, float):
+            raise TypeError("`test_size` should be of type <float>")
+        if not 0.0 < test_size < 1.0:
+            raise ValueError("`test_size` should be a float in the interval "
+                             "(0.0, 1.0)")
+        test_size_ = test_size
+        train_size_ = 1 - test_size_
+
+    if train_size is not None:
+        if not isinstance(train_size, float):
+            raise TypeError("`train_size` should be of type: float")
+        if not 0.0 < train_size < 1.0:
+            raise ValueError("`train_size` should be in the interval (0.0, "
+                             "1.0)")
+        train_size_ = train_size
+        test_size_ = 1 - train_size_
+
+    return train_size_, test_size_
