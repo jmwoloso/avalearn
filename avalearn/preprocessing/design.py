@@ -4,7 +4,7 @@ data_prep.py: classes for designing data treatment.
 """
 import pandas as pd
 
-from .base import TreatmentDesignMixin
+from .mixin import TreatmentDesignMixin
 
 
 
@@ -12,20 +12,22 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
     """
     Class for designing treatments for classification tasks.
     """
-    def __init__(self, feature_columns="all", target_column=-1,
-                 min_feature_significance=0.05,
-                 rare_level_threshold=0.02, positive_class=1,
+    def __init__(self, features="all", target=-1,
+                 min_feature_significance=None,
+                 rare_level_min_fraction=0.02, positive_class=1,
                  cv=3, cv_type='loo', cv_split_function=None, train_size=0.2,
                  test_size=None, random_state=None, n_jobs=1,
                  novel_level_strategy="nan", make_nan_indicators=True,
                  rare_level_pooling=False,
                  high_cardinality_strategy="impact",
-                 downstream_context=None):
+                 downstream_context=None, remove_duplicates=False,
+                 feature_scaling=False, rare_level_significance=None,
+                 feature_engineering=None, positive_class=None):
         """
 
         Parameters
         ----------
-        treatment_columns : one of {list of column names, list of column indices, "all"}; default="all"
+        feature_columns : one of {list of column names, list of column indices, "all"}; default="all"
             The columns that should be used during treatment design.
 
         target_column : one of {target column name; target column index}; default=-1
@@ -46,7 +48,7 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
             included in the final treated dataframe where lower values
             indicate more significance.
 
-        rare_level_threshold : float in range(0,1); default=0.02
+        rare_level_min_fraction : float in range(0,1); default=0.02
             The minimum percentage of time that a specific level of a
             categorical variable has to show up in order to be treated as a
             unique level. Any categorical level failing to meet the
@@ -127,6 +129,9 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
             being returned in a format suitable for use in the
             sklearn.pipeline.Pipeline class.
 
+        positive_class : one of {int, float, str}; default=None
+            The class label representing the positive case.
+
         Attributes
         ----------
         df_ : pandas.DataFrame.
@@ -138,10 +143,10 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
         target_ : pandas.DataFrame.
             The target column.
 
-        numeric_features_ : pandas.DataFrame.
+        numeric_ : pandas.DataFrame.
             The numeric features in the dataframe.
 
-        categorical_features_ : pandas.DataFrame.
+        categorical_ : pandas.DataFrame.
             The categorical features in the dataframe.
 
         treatment_description_ : pandas.DataFrame-like.
@@ -163,13 +168,16 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
         ----------
 
         """
+        # TODO: Raise NotImplementedError for feature engineering (initially)
         # TODO: check for multiclass classification (count of unique class labels and raise NotImplementedError for the time being
-        super().__init__(feature_columns, target_column, min_feature_significance,
+        super().__init__(features, target,
+                         min_feature_significance,
                          cv, cv_type, cv_split_function, train_size, test_size,
                          random_state, novel_level_strategy,
-                         rare_level_threshold, rare_level_pooling,
+                         rare_level_min_fraction, rare_level_pooling,
+                         rare_level_significance, feature_engineering,
                          make_nan_indicators, high_cardinality_strategy,
-                         downstream_context)
+                         downstream_context, remove_duplicates, feature_scaling)
         self.positive_class = positive_class
 
 
