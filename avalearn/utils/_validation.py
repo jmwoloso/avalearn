@@ -145,3 +145,11 @@ def _check_significance(n_features=None, significance=None):
     remove_features_ = False if feature_significance_ is None else True
 
     return feature_significance_, remove_features_
+
+
+def _check_ordinal_features(features=None):
+    """
+    Attempts to find ordinal features among the features and converts the
+    dtype to 'category'.
+    """
+    pass
