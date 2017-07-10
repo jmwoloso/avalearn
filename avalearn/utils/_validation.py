@@ -76,26 +76,53 @@ def _check_feature_target(df_columns=None, features=None, target=None):
     return features_, target_
 
 
+def _check_ordinal_features(features=None):
+    """
+    Attempts to find ordinal features among the features and converts the
+    dtype to 'category'.
+    """
+    pass
+
+
 def _check_column_dtypes(dataframe=None, features=None, target=None,
-                         convert_dtypes=True):
+                         convert_dtypes=True,
+                         ordinals=None, find_ordinals=False):
     """
     Separates numeric from categorical columns; attempts to convert
-    categorical columns to numeric if `convert_dtypes=True`.
+    categorical columns to numeric if `find_ordinals=True`.
     """
-    if convert_dtypes not in {True, False}:
-        raise ValueError("`convert_dtypes` must be one of {True, False}")
-    if convert_dtypes is True:
-        for column, _ in dataframe.iteritems():
-            try:
-                dataframe.loc[:, column] = dataframe.loc[:, column] \
-                    .astype(float)
-            except ValueError:
-                pass
-    numeric_ = dataframe.loc[:, features].select_dtypes(include=[
-        'float', 'int']).columns
-    categorical_ = dataframe.loc[:, features].select_dtypes(
-        include=['object']).columns
-    return numeric_, categorical_
+    def mapper(values):
+        mapping = dict()
+        for i, value in enumerate(range(len(values))):
+            mapping[value] = i
+        return mapping
+    # if convert_dtypes not in {True, False}:
+    #     raise ValueError("`convert_dtypes` must be one of [True, False]")
+    if find_ordinals not in {True, False}:
+        raise ValueError("`find_ordinals` must be one of [True, False]")
+    if find_ordinals is True:
+        if ordinals != None:
+            find_ordinals = False
+        else:
+            # find int dtypes
+            ordinal_ = dataframe.loc[:, dataframe.dtypes ==
+                                        int].columns.tolist()
+
+            for column, _ in dataframe.loc[:, dataframe.dtypes ==
+                    object].iteritems():
+                try:
+                    dataframe.loc[:, column].astype(int)
+                    ordinal_.append(column)
+                except ValueError:
+                    pass
+    numeric_ = dataframe.loc[:, features].select_dtypes(include=['float']).columns
+    categorical_ = dataframe.loc[:, ~dataframe.columns.isin(ordinal_)].select_dtypes(include=['object']).columns
+    # create the mapping
+    mapping_ = dict()
+    for column, _ in dataframe.loc[:, categorical_].iteritems():
+        mapping_[column] = dict()
+        mapping_[column] = mapper(dataframe.loc[:, column].unique().tolist())
+    return numeric_, categorical_, pandas.Index(ordinal_), mapping_
 
 
 def _check_train_test_size(train_size=None, test_size=None):
@@ -147,9 +174,29 @@ def _check_significance(n_features=None, significance=None):
     return feature_significance_, remove_features_
 
 
-def _check_ordinal_features(features=None):
+def _validate_init_params(dataframe=None, features=None, target=None,
+                          convert_dtypes=None, train_size=None,
+                          test_size=None, significance=None, ordinals=None,
+                          find_ordinals=False):
     """
-    Attempts to find ordinal features among the features and converts the
-    dtype to 'category'.
+    Master validation function that dispatches the input parameters for
+    checking then records the appropriate class attributes.
     """
-    pass
+    _check_dframe(dataframe=dataframe)
+    features_, target_ = _check_feature_target(df_columns=dataframe.columns,
+                                               features=features,
+                                               target=target)
+
+    train_size_ = _check_train_test_size(train_size, test_size)
+
+    feature_significance_, remove_features_ = \
+        _check_significance(n_features=dataframe.shape[0],
+                            significance=significance)
+
+    numeric_, categorical_, ordinal_, mapping_ = \
+        _check_column_dtypes(dataframe=dataframe,
+                             features=features_,
+                             target=target_,
+                             convert_dtypes=convert_dtypes,
+                             ordinals=ordinals,
+                             find_ordinals=find_ordinals)
