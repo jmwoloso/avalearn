@@ -5,16 +5,17 @@ data_prep.py: classes for designing data treatment.
 import pandas as pd
 
 from .mixin import TreatmentDesignMixin
-
+from ..utils._validation import _check_positive_class
 
 
 class ClassificationTreatmentDesign(TreatmentDesignMixin):
     """
     Class for designing treatments for classification tasks.
     """
-    def __init__(self, features="all", target=-1,
-                 min_feature_significance=None,
-                 rare_level_min_fraction=0.02, positive_class=1,
+    def __init__(self, features="all", target=-1, ordinal_features=None,
+                 min_feature_significance=None, find_ordinals=True,
+                 ordinal_mapping=None,
+                 unique_level_min_percent=0.02, positive_class=1,
                  cv=3, cv_type='loo', cv_split_function=None, train_size=0.2,
                  test_size=None, random_state=None, n_jobs=1,
                  novel_level_strategy="nan", make_nan_indicators=True,
@@ -22,7 +23,7 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
                  high_cardinality_strategy="impact",
                  downstream_context=None, remove_duplicates=False,
                  feature_scaling=False, rare_level_significance=None,
-                 feature_engineering=None, positive_class=None):
+                 feature_engineering=None, ):
         """
 
         Parameters
@@ -33,22 +34,21 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
         target_column : one of {target column name; target column index}; default=-1
             The column name or column index where the target resides.
 
-        ordinal_columns : one of {list of column names, list of column indices, "all", None}; default=None
+        ordinal_features : one of {list of column names, list of column indices, "all", None}; default=None
             The column names or column indices for any known ordinal
-            categorical features. Features of this type can be safely hashed to
-            numeric values for use in downstream machine learning models and
-            that hashing is taken care of here. Ordinal features are still
-            subject to the parameter value set for `rare_level_threshold`
-            and `rare_level_pooling` and will be handled accordingly after
-            they are hashed.
+            features. Features of this type can be safely hashed to numeric
+            values for use in downstream machine learning models. Ordinal
+            features are still subject to the parameter value set for
+            `rare_level_threshold` and `rare_level_pooling` and will be
+            handled accordingly after they are hashed.
 
-        min_feature_significance : one of {float in the intervale (0, 1), None}; default=0.05
+        min_feature_significance : one of {float in the interval (0, 1), "1/n_features", None}; default="1/n_features"
             If `None`, no feature pruning will take place otherwise this is
             the minimum significance level a feature needs in order to be
             included in the final treated dataframe where lower values
             indicate more significance.
 
-        rare_level_min_fraction : float in range(0,1); default=0.02
+        unique_level_min_percent : float in range(0,1); default=0.02
             The minimum percentage of time that a specific level of a
             categorical variable has to show up in order to be treated as a
             unique level. Any categorical level failing to meet the
@@ -105,22 +105,22 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
 
         make_nan_indicators : bool; default=True
 
-        novel_level_strategy : one of {"known", "none", "nan", "rare", "pooled"}; default="nan"
+        novel_level_strategy : one of {"known", "zero", "nan", "rare", "pooled"}; default="nan"
             The strategy used when novel categorical levels are encountered
-            when treating data.
+            during data treatment.
 
-              known : novel levels are weighted proportional to known levels.
+              'known' : novel levels are weighted proportional to known levels.
 
-              none : novel levels are treated as "no level" and assigned
-              zero for known level indicators.
+              'zero' : novel levels are treated as "no level" and assigned
+              zero for known-level indicators.
 
-              nan : novel levels are treated as missing and assigned to the
+              'nan' : novel levels are treated as missing and assigned to the
               "NaN" level indicators if `make_nan_indicators`=True.
 
-              rare : novel levels are weighted proportional to rare levels
+              'rare' : novel levels are weighted proportional to rare levels
               only.
 
-              pooled : novel levels are added to the pooled indicator level
+              'pooled' : novel levels are added to the pooled indicator level
               IF `rare_level_pooling`=True.
 
         downstream_context : one of {"pipeline", None}; default=None
@@ -131,6 +131,56 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
 
         positive_class : one of {int, float, str}; default=None
             The class label representing the positive case.
+
+        find_ordinals : bool; default=False
+            Whether to attempt to find ordinals among the features. Ignored
+            when `ordinal_features` != None. Ordinals are found naively by
+            checking first for columns where dtype == int and then by
+            attempting to coerce columns where dtype == object into dtype == int
+
+            Note: this is distinct behavior relative to the
+            `ordinal_mapping` parameter as this method applies to finding
+            ordinal features among the dtype == int columns while the ordinal
+            mapping relates to columns where dtype == object but are known to
+            contain an ordering among the levels that must be supplied in order
+            to consider the column(s) to be ordinal.
+
+        ordinal_mapping : one of {nested dict of mappings, None}
+            If `ordinal_features` != None and a dict is provided, the dict
+            should contain the ordinal column names as top-level keys and
+            within each top-level key, another dict should reside containing the
+            (sorted) original values as keys and their appropriate mapping
+            (to ints). The mapping will be applied to the specified columns
+            and preserved in the `ordinal_mapping_` attribute.
+
+            The mapping dict should be like the following:
+
+            map_dict = {"ColumnA": {"A": 0,
+                                    "B": 1}}
+
+            If `ordinal_features` = None and `find_ordinals` = True, each feature
+            column where dtype=object will be checked and mapped accordingly
+            with the mapping preserved in the `ordinal_mapping_` attribute.
+
+            If `find_ordinals`=True, the algorithm looks first for
+            columns with dtype=int and will re-classify them as
+            dtype=category without creating a mapping as the mapping is
+            thought to be inherent in the values.
+
+            For columns of dtype=object, an attempt to convert them to
+            dtype=int will be made and if successful, no mapping will be
+            created for the same reasons as above. If they cannot be
+            converted to dtype=int, they will be sorted alphabetically and
+            mapped accordingly.
+
+            Note: this feature may create undesirable mappings in some
+            cases, such as columns where the logical order is something
+            other than alphabetic, e.g. {'XS', 'S', 'M', 'L', 'XL'}.
+
+        remove_duplicates : bool; default=True
+            Whether to remove duplicate columns or not. During treatment
+            design duplicate columns will be flagged but will not be removed
+            until the treatment is applied to the data via the `fit` method.
 
         Attributes
         ----------
@@ -171,13 +221,14 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
         # TODO: Raise NotImplementedError for feature engineering (initially)
         # TODO: check for multiclass classification (count of unique class labels and raise NotImplementedError for the time being
         super().__init__(features, target,
-                         min_feature_significance,
+                         min_feature_significance, find_ordinals,
                          cv, cv_type, cv_split_function, train_size, test_size,
                          random_state, novel_level_strategy,
-                         rare_level_min_fraction, rare_level_pooling,
+                         unique_level_min_percent, rare_level_pooling,
                          rare_level_significance, feature_engineering,
                          make_nan_indicators, high_cardinality_strategy,
-                         downstream_context, remove_duplicates, feature_scaling)
+                         downstream_context, remove_duplicates,
+                         feature_scaling)
         self.positive_class = positive_class
 
 
@@ -196,6 +247,7 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
             Returns self.
         """
         super().fit(dataframe)
+        _check_positive_class(self.positive_class, self.target_)
 
 
     def transform(self, dataframe):
