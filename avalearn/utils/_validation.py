@@ -96,10 +96,7 @@ def _check_column_dtypes(dataframe=None, features=None, target=None,
         for i, value in enumerate(range(len(values))):
             mapping[value] = i
         return mapping
-    # if convert_dtypes not in {True, False}:
-    #     raise ValueError("`convert_dtypes` must be one of [True, False]")
-    if find_ordinals not in {True, False}:
-        raise ValueError("`find_ordinals` must be one of [True, False]")
+
     if find_ordinals is True:
         if ordinals != None:
             find_ordinals = False
@@ -151,26 +148,37 @@ def _check_train_test_size(train_size=None, test_size=None):
     return train_size_, test_size_
 
 
-def _check_significance(n_features=None, significance=None):
-    """
-    Validates the min_feature_significance parameter and sets the
-    feature_significance and remove_features_ attributes.
-    """
-    if significance is None:
-        feature_significance_ = significance
-    if significance == "1/n_features":
-        feature_significance_ = 1.0 / n_features
-    sig_type = type(significance)
-    if sig_type == str:
-        raise ValueError("`min_feature_significance` should be one of [float in the interval (0, 1), '1/n_features', None]")
-    if sig_type != float:
-        raise ValueError("`min_feature_significance` should be one of [float in the interval (0, 1), '1/n_features', None]")
-    if sig_type == float and not 0.0 < significance < 1.0:
-        raise ValueError("`min_feature_significance` should be type <float> "
-                         "in the interval (0.0, 1.0)")
-
-    remove_features_ = False if feature_significance_ is None else True
-
-    return feature_significance_, remove_features_
+def _check_positive_class(class_value=None, target_classes=None):
+    if class_value not in target_classes:
+        raise ValueError("`positive_class` not found in `target`")
 
 
+def _check_keyword_type(keyword=None, parameter=None, values=None,
+                         keyword_type=None, min_max_range=None):
+    if not isinstance(keyword, keyword_type):
+        raise ValueError("`{0}` must be one of [{1}]"
+                         .format(parameter,
+                                 ", ".join(str(item) for item in values)))
+    if min_max_range is not None:
+        if not min_max_range[0] < keyword < min_max_range[1]:
+            raise ValueError("`{0}` must be one of [{1}]"
+                             .format(parameter,
+                                     ", ".join(str(item) for item in values)))
+    return True
+
+
+def _check_keywords(keyword=None, parameter=None, values=None,
+                    keyword_type=None, min_max_range=None):
+    if keyword_type is not None:
+        _check_keyword_type(keyword, parameter, values, keyword_type,
+                            min_max_range)
+
+    elif keyword not in values:
+        raise ValueError("`{0}` must be one of [{1}]"
+                         .format(parameter, ", ".join(str(item) for item in
+                                                      values)))
+
+
+def _check_boolean(boolean=None, parameter=None):
+    if not isinstance(boolean, bool):
+        raise ValueError("`{}` must be one of [True, False]".format(parameter))
