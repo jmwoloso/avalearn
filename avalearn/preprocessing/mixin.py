@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import numpy as np
-
+from sklearn.utils import check_random_state
 from .base import BaseTreatmentDesign
 from ..utils._validation import _check_dframe, _check_feature_target, \
-    _check_train_test_size, _check_significance, _check_column_dtypes
+    _check_train_test_size, _check_column_dtypes, \
+    _check_boolean, _check_keywords
 
 
 class TreatmentDesignMixin(BaseTreatmentDesign):
@@ -26,7 +27,10 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
                  feature_engineering=None,
                  convert_dtypes=True,
                  find_ordinals=True,
-                 ordinal_features=None):
+                 ordinals=None,
+                 high_cardinality_threshold=None,
+                 n_jobs=1,
+                 ordinal_mapping=None):
 
         # TODO: ensure all params, attrs, etc. are documented
         self.features = features
@@ -43,20 +47,74 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         self.make_nans = make_nan_indicators
         self.rare_pooling = rare_level_pooling
         self.high_cardinality_strategy = high_cardinality_strategy
+        self.high_cardinality_threshold = high_cardinality_threshold
         self.context = downstream_context
         self.deduplicate = remove_duplicates
         self.scaling = feature_scaling
         self.rare_significance = rare_level_significance
         self.feature_engineering = feature_engineering
         self.convert_dtypes = convert_dtypes
-        self.ordinals = find_ordinals
-        self.ordinal_features=ordinal_features
+        self.find_ordinals = find_ordinals
+        self.ordinals=ordinals
+        self.n_jobs = n_jobs
+        self.mapping = ordinal_mapping
 
     def _validate_params(self, dataframe):
         """
-        Validates the parameters passed in during intialization.
+        Validates the parameters passed in during initialization.
         """
         _check_dframe(dataframe=dataframe)
+
+        _check_keywords(self.significance,
+                        "min_feature_significance",
+                        ["float in range(0, 1)", "1/n_features", None],
+                        float,
+                        [0,1])
+
+        _check_keywords(self.unique_percent,
+                        "unique_level_min_percent",
+                        ["float in range(0, 1)"],
+                        float,
+                        [0,1])
+
+        # TODO: add enhancement to allow value to be set based upon the dataset instead of fixed int values
+        _check_keywords(self.high_cardinality_threshold,
+                        "high_cardinality_threshold",
+                        [int],
+                        int,
+                        [0, np.inf])
+
+        _check_keywords(self.n_jobs,
+                        "n_jobs",
+                        [int],
+                        int,
+                        [-2, np.inf])
+
+        _check_keywords(self.context, "downstream_context", ["pipeline", None])
+
+        _check_keywords(self.high_cardinality_strategy,
+                        "high_cardinality_strategy",
+                        ["impact", "indicators"])
+
+        _check_keywords(self.mapping,
+                        "ordinal_mapping",
+                        [dict, None],
+                        dict,
+                        None)
+
+        _check_keywords(self.novel_strategy,
+                        "novel_level_strategy",
+                        ["known", "zero", "nan", "rare", "pooled"])
+
+        _check_boolean(self.rare_pooling, "rare_level_pooling")
+        _check_boolean(self.make_nans, "make_nan_indicators")
+        _check_boolean(self.find_ordinals, "find_ordinals")
+        _check_boolean(self.deduplicate, "remove_duplicates")
+        _check_boolean(self.scaling, "feature_scaling")
+        _check_boolean(self.feature_engineering, "feature_engineering")
+
+        self.remove_features_ = False if self.significance is None else True
+
         self.features_, self.target_ = _check_feature_target(
             df_columns=dataframe.columns,
             features=self.features,
@@ -65,17 +123,20 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         self.train_size_ = _check_train_test_size(self.train_size,
                                                   self.test_size)
 
-        self.feature_significance_, self.remove_features_ = \
-            _check_significance(n_features=dataframe.shape[0],
-                                significance=self.significance)
-
         self.numeric_, self.categorical_, self.ordinal_, self.mapping_ = \
             _check_column_dtypes(dataframe=dataframe,
                                  features=self.features_,
                                  target=self.target_,
                                  convert_dtypes=self.convert_dtypes,
-                                 ordinals=self.ordinal_features,
-                                 find_ordinals=self.ordinals)
+                                 ordinals=self.ordinals,
+                                 find_ordinals=self.find_ordinals)
+
+
+
+
+
+
+
 
         return self
 
@@ -85,6 +146,7 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         Create the treatment plan.
         """
         self._validate_params(dataframe)
+
 
     def transform(self, dataframe):
         """
