@@ -174,29 +174,3 @@ def _check_significance(n_features=None, significance=None):
     return feature_significance_, remove_features_
 
 
-def _validate_init_params(dataframe=None, features=None, target=None,
-                          convert_dtypes=None, train_size=None,
-                          test_size=None, significance=None, ordinals=None,
-                          find_ordinals=False):
-    """
-    Master validation function that dispatches the input parameters for
-    checking then records the appropriate class attributes.
-    """
-    _check_dframe(dataframe=dataframe)
-    features_, target_ = _check_feature_target(df_columns=dataframe.columns,
-                                               features=features,
-                                               target=target)
-
-    train_size_ = _check_train_test_size(train_size, test_size)
-
-    feature_significance_, remove_features_ = \
-        _check_significance(n_features=dataframe.shape[0],
-                            significance=significance)
-
-    numeric_, categorical_, ordinal_, mapping_ = \
-        _check_column_dtypes(dataframe=dataframe,
-                             features=features_,
-                             target=target_,
-                             convert_dtypes=convert_dtypes,
-                             ordinals=ordinals,
-                             find_ordinals=find_ordinals)
