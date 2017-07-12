@@ -12,7 +12,7 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
     """
     Class for designing treatments for classification tasks.
     """
-    def __init__(self, features="all", target=-1, ordinal_features=None,
+    def __init__(self, features="all", target=-1, ordinals=None,
                  min_feature_significance=None, find_ordinals=True,
                  ordinal_mapping=None,
                  unique_level_min_percent=0.02, positive_class=1,
@@ -23,18 +23,18 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
                  high_cardinality_strategy="impact",
                  downstream_context=None, remove_duplicates=False,
                  feature_scaling=False, rare_level_significance=None,
-                 feature_engineering=None, ):
+                 feature_engineering=None, high_cardinality_threshold=None):
         """
 
         Parameters
         ----------
-        feature_columns : one of {list of column names, list of column indices, "all"}; default="all"
+        features : one of {list of column names, list of column indices, "all"}; default="all"
             The columns that should be used during treatment design.
 
-        target_column : one of {target column name; target column index}; default=-1
+        target : one of {target column name; target column index}; default=-1
             The column name or column index where the target resides.
 
-        ordinal_features : one of {list of column names, list of column indices, "all", None}; default=None
+        ordinals : one of {list of column names, list of column indices, "all", None}; default=None
             The column names or column indices for any known ordinal
             features. Features of this type can be safely hashed to numeric
             values for use in downstream machine learning models. Ordinal
@@ -182,6 +182,13 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
             design duplicate columns will be flagged but will not be removed
             until the treatment is applied to the data via the `fit` method.
 
+        feature_engineering : bool; default=False
+            Whether to create interaction terms and apply additional feature
+            engineering steps to the dataframe.
+
+        feature_scaling : bool; default=True
+            Whether to standardize the data.
+
         Attributes
         ----------
         df_ : pandas.DataFrame.
@@ -220,7 +227,8 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
         """
         # TODO: Raise NotImplementedError for feature engineering (initially)
         # TODO: check for multiclass classification (count of unique class labels and raise NotImplementedError for the time being
-        super().__init__(features, target,
+        # TODO: update attributes
+        super().__init__(features, target, ordinals, n_jobs,
                          min_feature_significance, find_ordinals,
                          cv, cv_type, cv_split_function, train_size, test_size,
                          random_state, novel_level_strategy,
@@ -228,7 +236,7 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
                          rare_level_significance, feature_engineering,
                          make_nan_indicators, high_cardinality_strategy,
                          downstream_context, remove_duplicates,
-                         feature_scaling)
+                         feature_scaling, high_cardinality_threshold, ordinal_mapping)
         self.positive_class = positive_class
 
 
