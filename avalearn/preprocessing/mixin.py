@@ -69,13 +69,17 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
             _check_significance(n_features=dataframe.shape[0],
                                 significance=self.significance)
 
-        numeric_, categorical_, ordinal_, mapping_ = \
+        self.numeric_, self.categorical_, self.ordinal_, self.mapping_ = \
             _check_column_dtypes(dataframe=dataframe,
                                  features=self.features_,
                                  target=self.target_,
                                  convert_dtypes=self.convert_dtypes,
                                  ordinals=self.ordinal_features,
                                  find_ordinals=self.ordinals)
+
+        return self
+
+
     def fit(self, dataframe):
         """
         Create the treatment plan.
