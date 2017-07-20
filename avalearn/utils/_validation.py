@@ -108,7 +108,7 @@ def _check_column_dtypes(dataframe=None, features=None, target=None,
             for column, _ in dataframe.loc[:, dataframe.dtypes ==
                     object].iteritems():
                 try:
-                    dataframe.loc[:, column].astype(int)
+                    dataframe.loc[:, column].dropna().astype(int)
                     ordinal_.append(column)
                 except ValueError:
                     pass
