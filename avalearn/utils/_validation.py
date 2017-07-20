@@ -93,7 +93,7 @@ def _check_column_dtypes(dataframe=None, features=None, target=None,
     """
     def mapper(values):
         mapping = dict()
-        for i, value in enumerate(range(len(values))):
+        for i, value in enumerate(values):
             mapping[value] = i
         return mapping
 
