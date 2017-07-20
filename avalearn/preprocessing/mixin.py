@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import numpy as np
 from sklearn.utils import check_random_state
-from .base import BaseTreatmentDesign, TreatmentDescriptionDF
+from .base import BaseTreatmentDesign, TreatmentDescriptionDataFrame, \
+    DelayedDataFrame
 from ..utils._validation import _check_dframe, _check_feature_target, \
     _check_train_test_size, _check_column_dtypes, \
     _check_boolean, _check_keywords
@@ -150,8 +151,8 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         # input validation
         self._validate_params(dataframe)
         # with input validated, create the TreatmentDescriptionDF object
-        self.TreatmentDescription = TreatmentDescriptionDF()
-        
+        self.TreatmentDescriptionDF = TreatmentDescriptionDataFrame()
+        self.DelayedDF = DelayedDataFrame
 
 
     def transform(self, dataframe):

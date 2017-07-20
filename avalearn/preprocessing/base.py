@@ -31,7 +31,7 @@ class BaseTreatmentDesign(object):
 
 
 
-class LazyDataFrame(pd.DataFrame):
+class DelayedDataFrame(pd.DataFrame):
     """
     DataFrame to record the processing steps. Can be used to apply
     transformations after the treatment is designed. Based upon the
@@ -45,7 +45,7 @@ class LazyDataFrame(pd.DataFrame):
 
 
 
-class TreatmentDescriptionDF(pd.DataFrame):
+class TreatmentDescriptionDataFrame(pd.DataFrame):
     def __init__(self):
         # columns for the treament plan description df
         columns = ["new_variable_name", "new_variable_significance",
