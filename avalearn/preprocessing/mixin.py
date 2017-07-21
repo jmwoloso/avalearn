@@ -31,7 +31,8 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
                  ordinals=None,
                  high_cardinality_threshold=None,
                  n_jobs=1,
-                 ordinal_mapping=None):
+                 ordinal_mapping=None,
+                 categorical_fill_value="NaN"):
 
         # TODO: ensure all params, attrs, etc. are documented
         self.features = features
@@ -59,6 +60,7 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         self.ordinals=ordinals
         self.n_jobs = n_jobs
         self.mapping = ordinal_mapping
+        self.fill_value = categorical_fill_value
 
     def _validate_params(self, dataframe):
         """
@@ -124,16 +126,19 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         self.train_size_ = _check_train_test_size(self.train_size,
                                                   self.test_size)
 
-        self.numeric_, self.categorical_, self.ordinal_, self.mapping_ = \
+        self.numeric_, self.categorical_, self.ordinal_, self.mapping_, \
+        self.nan_numeric_, self.nan_categorical_, self.nan_ordinal_ = \
             _check_column_dtypes(dataframe=dataframe,
                                  features=self.features_,
                                  target=self.target_,
                                  convert_dtypes=self.convert_dtypes,
                                  ordinals=self.ordinals,
-                                 find_ordinals=self.find_ordinals)
+                                 find_ordinals=self.find_ordinals,
+                                 fill_value=self.fill_value)
         
         self.random_state_ = check_random_state(self.random_state)
 
+        # TODO: finish validation routines
 
 
 
@@ -151,8 +156,27 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         # input validation
         self._validate_params(dataframe)
         # with input validated, create the TreatmentDescriptionDF object
-        self.TreatmentDescriptionDF = TreatmentDescriptionDataFrame()
-        self.DelayedDF = DelayedDataFrame
+        self.TreatmentDescriptionDF_ = TreatmentDescriptionDataFrame()
+        self.DelayedDF_ = DelayedDataFrame()
+        # copy the dataframe for modification
+        self.df_ = dataframe.copy()
+        
+        # fill in missing values
+        self.df_.loc[:, self.nan_numeric_] = \
+            self.df_.loc[:, self.nan_numeric_]\
+                .fillna(self.df_.loc[:, self.nan_numeric_].mean())
+        
+        self.df_.loc[:, self.nan_categorical_] = \
+            self.df_.loc[:, self.nan_categorical_]\
+                .fillna(value=self.fill_value)
+        
+        # apply mapping for ordinals
+        self.df_.loc[:, self.nan_ordinal_] = \
+            self.df_.loc[:, self.nan_ordinal_]\
+                .fillna(value=self.fill_value)
+        
+        
+        
 
 
     def transform(self, dataframe):

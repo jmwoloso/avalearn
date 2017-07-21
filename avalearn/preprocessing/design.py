@@ -23,7 +23,8 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
                  high_cardinality_strategy="impact",
                  downstream_context=None, remove_duplicates=False,
                  feature_scaling=False, rare_level_significance=None,
-                 feature_engineering=None, high_cardinality_threshold=None):
+                 feature_engineering=None, high_cardinality_threshold=None,
+                 categorical_fill_value="NaN"):
         """
 
         Parameters
@@ -188,6 +189,9 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
 
         feature_scaling : bool; default=True
             Whether to standardize the data.
+            
+        categorical_fill_value : one of {str, int, float}
+            The value to fill nan ordinal and categorical features with.
 
         Attributes
         ----------
@@ -236,7 +240,8 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
                          rare_level_significance, feature_engineering,
                          make_nan_indicators, high_cardinality_strategy,
                          downstream_context, remove_duplicates,
-                         feature_scaling, high_cardinality_threshold, ordinal_mapping)
+                         feature_scaling, high_cardinality_threshold,
+                         ordinal_mapping, categorical_fill_value)
         self.positive_class = positive_class
 
 

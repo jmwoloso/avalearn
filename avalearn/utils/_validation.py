@@ -85,41 +85,76 @@ def _check_ordinal_features(features=None):
 
 
 def _check_column_dtypes(dataframe=None, features=None, target=None,
-                         convert_dtypes=True,
-                         ordinals=None, find_ordinals=False):
+                         convert_dtypes=True, ordinals=None,
+                         find_ordinals=False, predefined_mapping=None,
+                         fill_value=None):
     """
     Separates numeric from categorical columns; attempts to convert
     categorical columns to numeric if `find_ordinals=True`.
     """
-    def mapper(values):
+    def mapper(values, fill_value):
         mapping = dict()
         for i, value in enumerate(values):
-            mapping[value] = i
+            if pandas.isnull(value):
+                mapping[fill_value] = i
+            else:
+                mapping[value] = i
         return mapping
-
+    
+    columns = dataframe.columns
+    
+    try:
+        columns = columns.drop(labels=target)
+    except ValueError:
+        pass
+    
     if find_ordinals is True:
         if ordinals != None:
             find_ordinals = False
         else:
             # find int dtypes
-            ordinal_ = dataframe.loc[:, dataframe.dtypes ==
-                                        int].columns.tolist()
-
-            for column, _ in dataframe.loc[:, dataframe.dtypes ==
-                    object].iteritems():
+            ordinal_ = dataframe.loc[:, columns].loc[:, dataframe.dtypes == int].columns.tolist()
+            
+            for column, _ in dataframe.loc[:, columns].loc[:, dataframe.dtypes == object].iteritems():
                 try:
                     dataframe.loc[:, column].dropna().astype(int)
                     ordinal_.append(column)
                 except ValueError:
                     pass
-    numeric_ = dataframe.loc[:, features].select_dtypes(include=['float']).columns
-    categorical_ = dataframe.loc[:, ~dataframe.columns.isin(ordinal_)].select_dtypes(include=['object']).columns
+            
+            # also check whether floats are whole numbers that can be safely converted to int
+            # TODO: ENH: we could be more aggressive in declaring float columns as ordinal
+            for column, _ in dataframe.loc[:, columns].loc[:, dataframe.dtypes == float].iteritems():
+                is_int_sum = dataframe.loc[:, column].apply(lambda x: x.is_integer()).sum()
+                # if EVERY non-nan value doesn't satisfy is_integer(),
+                # we'll leave the column as float to be safe
+                if is_int_sum == dataframe.loc[:, column].dropna().shape[0]:
+                    ordinal_.append(column)
+                else:
+                    pass
+    
+    numeric_ = dataframe.loc[:, ~dataframe.columns.isin(ordinal_)]\
+        .select_dtypes(include=['float'])\
+        .columns
+    
+    categorical_ = dataframe.loc[:, ~dataframe.columns.isin(ordinal_)]\
+        .select_dtypes(include=['object'])\
+        .columns
+    
     # create the mapping
     mapping_ = dict()
     for column, _ in dataframe.loc[:, categorical_].iteritems():
         mapping_[column] = dict()
-        mapping_[column] = mapper(dataframe.loc[:, column].unique().tolist())
-    return numeric_, categorical_, pandas.Index(ordinal_), mapping_
+        mapping_[column] = mapper(dataframe.loc[:, column].unique().tolist(),
+                                  fill_value)
+
+    # find columns with nan values
+    nan_numeric_ = dataframe.loc[:, numeric_].loc[:, dataframe.isnull().any()].columns
+    nan_categorical_ = dataframe.loc[:, categorical_].loc[:, dataframe.isnull().any()].columns
+    nan_ordinal_ = dataframe.loc[:, ordinal_].loc[:, dataframe.isnull().any()].columns
+    
+    return numeric_, categorical_, pandas.Index(ordinal_), mapping_, \
+           nan_numeric_, nan_categorical_, nan_ordinal_
 
 
 def _check_train_test_size(train_size=None, test_size=None):
