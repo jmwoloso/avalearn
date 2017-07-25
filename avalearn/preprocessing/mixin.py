@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 from sklearn.utils import check_random_state
-from .base import BaseTreatmentDesign, TreatmentDescriptionDataFrame, \
+from .base import TreatmentDescriptionDataFrame, \
     DelayedDataFrame
 from ..utils._validation import _check_dframe, _check_feature_target, \
     _check_train_test_size, _check_column_dtypes, \
@@ -13,7 +13,7 @@ from ..utils._validation import _check_dframe, _check_feature_target, \
 from ..utils._preprocessing import _make_indicators
 
 
-class TreatmentDesignMixin(BaseTreatmentDesign):
+class TreatmentDesignMixin(object):
     """
     Mixin class defining core functionality for treatment design-related
     classes.
@@ -193,14 +193,14 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         
 
 
-    def transform(self, dataframe):
-        """
-        Apply the treatment to the dataframe.
-        """
-        pass
-
-    def fit_transform(self, dataframe):
-        """
-        Create and apply the treatment plan.
-        """
-        pass
+    # def transform(self, dataframe):
+    #     """
+    #     Apply the treatment to the dataframe.
+    #     """
+    #     pass
+    #
+    # def fit_transform(self, dataframe):
+    #     """
+    #     Create and apply the treatment plan.
+    #     """
+    #     pass

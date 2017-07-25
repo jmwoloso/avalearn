@@ -3,32 +3,7 @@
 base.py : Base classes for the treatment design classes.
 
 """
-from abc import ABCMeta, abstractmethod
-
 import pandas as pd
-
-
-class BaseTreatmentDesign(object):
-    """
-    Base class for Treatment Design classes.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def fit(self, dataframe):
-        """Defines the fit routines."""
-        pass
-
-    @abstractmethod
-    def transform(self, dataframe):
-        """Defines the transformation routines."""
-        pass
-
-    @abstractmethod
-    def fit_transform(self, dataframe):
-        """Defines fit_transform routines."""
-        pass
-
 
 
 class DelayedDataFrame(pd.DataFrame):
