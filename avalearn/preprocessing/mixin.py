@@ -5,7 +5,12 @@ from .base import BaseTreatmentDesign, TreatmentDescriptionDataFrame, \
     DelayedDataFrame
 from ..utils._validation import _check_dframe, _check_feature_target, \
     _check_train_test_size, _check_column_dtypes, \
-    _check_boolean, _check_keywords
+    _check_boolean, \
+    _check_int_keyword, _check_float_keyword, _check_str_keyword, \
+    _check_min_feature_significance, _check_hc_threshold, \
+    _check_ordinal_mapping, _check_cat_fill_value
+
+from ..utils._preprocessing import _make_indicators
 
 
 class TreatmentDesignMixin(BaseTreatmentDesign):
@@ -25,14 +30,15 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
                  downstream_context=None, remove_duplicates=False,
                  feature_scaling=False,
                  rare_level_significance=None,
-                 feature_engineering=None,
+                 feature_engineering=True,
                  convert_dtypes=True,
                  find_ordinals=True,
                  ordinals=None,
                  high_cardinality_threshold=None,
                  n_jobs=1,
                  ordinal_mapping=None,
-                 categorical_fill_value="NaN"):
+                 categorical_fill_value="NaN",
+                 ordinal_fill_value=-1):
 
         # TODO: ensure all params, attrs, etc. are documented
         self.features = features
@@ -60,7 +66,8 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         self.ordinals=ordinals
         self.n_jobs = n_jobs
         self.mapping = ordinal_mapping
-        self.fill_value = categorical_fill_value
+        self.categorical_fill_value = categorical_fill_value
+        self.ordinal_fill_value = ordinal_fill_value
 
     def _validate_params(self, dataframe):
         """
@@ -68,46 +75,46 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         """
         _check_dframe(dataframe=dataframe)
 
-        _check_keywords(self.significance,
-                        "min_feature_significance",
-                        ["float in range(0, 1)", "1/n_features", None],
-                        float,
-                        [0,1])
-
-        _check_keywords(self.unique_percent,
-                        "unique_level_min_percent",
-                        ["float in range(0, 1)"],
-                        float,
-                        [0,1])
+        _check_min_feature_significance(self.significance,
+                                        ["float between 0.0 and 1.0",
+                                         "1/n_features",
+                                         None])
 
         # TODO: add enhancement to allow value to be set based upon the dataset instead of fixed int values
-        _check_keywords(self.high_cardinality_threshold,
-                        "high_cardinality_threshold",
-                        [int],
-                        int,
-                        [0, np.inf])
+        _check_hc_threshold(self.high_cardinality_threshold,
+                            ["int >= 0", None])
 
-        _check_keywords(self.n_jobs,
-                        "n_jobs",
-                        [int],
-                        int,
-                        [-2, np.inf])
+        _check_ordinal_mapping(self.mapping,
+                               [dict, None],
+                               dataframe.columns.tolist())
 
-        _check_keywords(self.context, "downstream_context", ["pipeline", None])
+        _check_cat_fill_value(self.categorical_fill_value,
+                              "categorical_fill_value")
+        
+        _check_float_keyword(self.unique_percent,
+                             "unique_level_min_percent",
+                             [0,1])
+        
+        
+        _check_int_keyword(self.n_jobs,
+                           "n_jobs",
+                           [-1, np.inf])
+        
+        _check_int_keyword(self.ordinal_fill_value,
+                           "ordinal_fill_value",
+                           None)
 
-        _check_keywords(self.high_cardinality_strategy,
-                        "high_cardinality_strategy",
-                        ["impact", "indicators"])
+        _check_str_keyword(self.context,
+                           "downstream_context",
+                           ["pipeline", None])
+        
+        _check_str_keyword(self.high_cardinality_strategy,
+                           "high_cardinality_strategy",
+                           ["impact", "indicators"])
 
-        _check_keywords(self.mapping,
-                        "ordinal_mapping",
-                        [dict, None],
-                        dict,
-                        None)
-
-        _check_keywords(self.novel_strategy,
-                        "novel_level_strategy",
-                        ["known", "zero", "nan", "rare", "pooled"])
+        _check_str_keyword(self.novel_strategy,
+                           "novel_level_strategy",
+                           ["known", "zero", "nan", "rare", "pooled"])
 
         _check_boolean(self.rare_pooling, "rare_level_pooling")
         _check_boolean(self.make_nans, "make_nan_indicators")
@@ -134,12 +141,12 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
                                  convert_dtypes=self.convert_dtypes,
                                  ordinals=self.ordinals,
                                  find_ordinals=self.find_ordinals,
-                                 fill_value=self.fill_value)
-        
+                                 categorical_fill_value=self.categorical_fill_value)
+
         self.random_state_ = check_random_state(self.random_state)
 
         # TODO: finish validation routines
-
+        # TODO: check cv, cv_type, cv_split_function, rare_level_significance, convert_dtypes, ordinals
 
 
 
@@ -168,12 +175,19 @@ class TreatmentDesignMixin(BaseTreatmentDesign):
         
         self.df_.loc[:, self.nan_categorical_] = \
             self.df_.loc[:, self.nan_categorical_]\
-                .fillna(value=self.fill_value)
+                .fillna(value=self.categorical_fill_value)
         
         # apply mapping for ordinals
         self.df_.loc[:, self.nan_ordinal_] = \
             self.df_.loc[:, self.nan_ordinal_]\
-                .fillna(value=self.fill_value)
+                .fillna(value=self.ordinal_fill_value)
+        
+        # make indicators for additional modeling and significance testing
+        self.df_indicators_ = _make_indicators(dataframe=self.df_,
+                                        categorical_columns=self.categorical_,
+                                        ordinal_columns=self.ordinal_)
+        
+        return self
         
         
         

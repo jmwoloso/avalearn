@@ -12,19 +12,27 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
     """
     Class for designing treatments for classification tasks.
     """
-    def __init__(self, features="all", target=-1, ordinals=None,
-                 min_feature_significance=None, find_ordinals=True,
-                 ordinal_mapping=None,
-                 unique_level_min_percent=0.02, positive_class=1,
-                 cv=3, cv_type='loo', cv_split_function=None, train_size=0.2,
-                 test_size=None, random_state=None, n_jobs=1,
-                 novel_level_strategy="nan", make_nan_indicators=True,
-                 rare_level_pooling=False,
+    def __init__(self, features="all", target=-1,
+                 min_feature_significance=None, cv=3, cv_type='loo',
+                 cv_split_function=None, train_size=0.2,
+                 test_size=None, random_state=None,
+                 unique_level_min_percent=0.02,
+                 novel_level_strategy="nan", rare_level_pooling=False,
+                 make_nan_indicators=True,
                  high_cardinality_strategy="impact",
                  downstream_context=None, remove_duplicates=False,
-                 feature_scaling=False, rare_level_significance=None,
-                 feature_engineering=None, high_cardinality_threshold=None,
-                 categorical_fill_value="NaN"):
+                 feature_scaling=False,
+                 rare_level_significance=None,
+                 feature_engineering=True,
+                 convert_dtypes=True,
+                 find_ordinals=True,
+                 ordinals=None,
+                 high_cardinality_threshold=None,
+                 n_jobs=1,
+                 ordinal_mapping=None,
+                 categorical_fill_value="NaN",
+                 ordinal_fill_value=-1,
+                 positive_class=1):
         """
 
         Parameters
@@ -43,7 +51,7 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
             `rare_level_threshold` and `rare_level_pooling` and will be
             handled accordingly after they are hashed.
 
-        min_feature_significance : one of {float in the interval (0, 1), "1/n_features", None}; default="1/n_features"
+        min_feature_significance : one of [float in the interval (0, 1), "1/n_features", None]; default="1/n_features"
             If `None`, no feature pruning will take place otherwise this is
             the minimum significance level a feature needs in order to be
             included in the final treated dataframe where lower values
@@ -67,7 +75,7 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
             strategy takes effect once the number of levels for a
             categorical feature meets or exceeds `high_cardinality_threshold`.
 
-        high_cardinality_threshold : int; default=20
+        high_cardinality_threshold : one of {int >= 0, None}; default=20
             The maximum levels that a categorical variable may contain
             before it is flagged as being high cardinality.
 
@@ -190,8 +198,17 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
         feature_scaling : bool; default=True
             Whether to standardize the data.
             
-        categorical_fill_value : one of {str, int, float}
-            The value to fill nan ordinal and categorical features with.
+        categorical_fill_value : str; default="NaN"
+            The value to fill nan-categorical features with.
+            
+        ordinal_fill_value : int; default=-1
+            The value to fill nan-ordinal features with.
+        
+        rare_level_significance :
+            NOT USED CURRENTLY
+        
+        convert_dtypes : bool;
+            NOT USED CURRENTLY
 
         Attributes
         ----------
@@ -232,16 +249,18 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
         # TODO: Raise NotImplementedError for feature engineering (initially)
         # TODO: check for multiclass classification (count of unique class labels and raise NotImplementedError for the time being
         # TODO: update attributes
-        super().__init__(features, target, ordinals, n_jobs,
-                         min_feature_significance, find_ordinals,
-                         cv, cv_type, cv_split_function, train_size, test_size,
-                         random_state, novel_level_strategy,
-                         unique_level_min_percent, rare_level_pooling,
+        # pass these in the correct order
+        super().__init__(features, target, min_feature_significance,
+                         cv, cv_type, cv_split_function,
+                         train_size, test_size, random_state,
+                         unique_level_min_percent, novel_level_strategy,
+                         rare_level_pooling, make_nan_indicators,
+                         high_cardinality_strategy, downstream_context,
+                         remove_duplicates, feature_scaling,
                          rare_level_significance, feature_engineering,
-                         make_nan_indicators, high_cardinality_strategy,
-                         downstream_context, remove_duplicates,
-                         feature_scaling, high_cardinality_threshold,
-                         ordinal_mapping, categorical_fill_value)
+                         convert_dtypes,
+                         find_ordinals, ordinals, high_cardinality_threshold,
+                         n_jobs, ordinal_mapping, categorical_fill_value)
         self.positive_class = positive_class
 
 
@@ -260,7 +279,8 @@ class ClassificationTreatmentDesign(TreatmentDesignMixin):
             Returns self.
         """
         super().fit(dataframe)
-        _check_positive_class(self.positive_class, self.target_)
+        _check_positive_class(self.positive_class, self.df_.loc[:,
+                                                   self.target_].unique())
 
 
     def transform(self, dataframe):
