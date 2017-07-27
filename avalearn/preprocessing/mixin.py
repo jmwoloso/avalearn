@@ -84,15 +84,15 @@ class TreatmentDesignMixin(object):
         
         # get the indices for nan columns
         self._get_nan_indices()
+
+        # make indicators for whether a value replacement occured
+        self._make_replacement_indicators(dataframe)
         
         # fill in missing values
         self._fill_na()
         
         # make indicators for additional modeling and significance testing
         self._make_indicators()
-        
-        # make indicators for whether a value replacement occured
-        self._make_replacement_indicators()
         
         return self
     
@@ -185,24 +185,7 @@ class TreatmentDesignMixin(object):
     
         # TODO: finish validation routines
         # TODO: check cv, cv_type, cv_split_function, rare_level_significance, convert_dtypes, ordinals
-       
-        return self
 
-    def _make_indicators(self):
-        if self.categorical_ is None and self.ordinal_ is None:
-            return self
-        elif self.categorical_ is None and self.ordinal_ is not None:
-            self.df_ = pd.get_dummies(self.df_,
-                                      columns=self.ordinal_.tolist())
-        elif self.ordinal_ is None and self.categorical_ is not None:
-            self.df_ = pd.get_dummies(self.df_,
-                                      columns=self.categorical_.tolist())
-        else:
-            self.df_ = pd.get_dummies(self.df_,
-                                      columns=self.categorical_.tolist() +
-                                              self.ordinal_.tolist())
-        return self
-    
     def _get_nan_indices(self):
         # get the indices of missing values
         self.nan_indices_ = dict()
@@ -223,8 +206,19 @@ class TreatmentDesignMixin(object):
             self.nan_indices_["nan_ordinal_"][column + "_NaN"] = \
                 np.where(self.df_.loc[:, column].isnull())[0]
 
-        return self
+    def _make_replacement_indicators(self, dataframe):
+        for column in self.numeric_:
+            self.df_.loc[:, column + "_is_replaced"] = \
+                dataframe.loc[:, column].isnull().map({True: 1, False: 0})
     
+        for column in self.categorical_:
+            self.df_.loc[:, column + "_is_replaced"] = \
+                dataframe.loc[:, column].isnull().map({True: 1, False: 0})
+    
+        for column in self.ordinal_:
+            self.df_.loc[:, column + "_is_replaced"] = \
+                dataframe.loc[:, column].isnull().map({True: 1, False: 0})
+
     def _fill_na(self):
         # fill in missing values
         self.df_.loc[:, self.nan_numeric_] = \
@@ -240,18 +234,22 @@ class TreatmentDesignMixin(object):
             self.df_.loc[:, self.nan_ordinal_] \
                 .fillna(value=self.ordinal_fill_value)
         
-        return self
+    def _make_indicators(self):
+        if self.categorical_ is None and self.ordinal_ is None:
+            return self
+        elif self.categorical_ is None and self.ordinal_ is not None:
+            self.df_ = pd.get_dummies(self.df_,
+                                      columns=self.ordinal_.tolist())
+        elif self.ordinal_ is None and self.categorical_ is not None:
+            self.df_ = pd.get_dummies(self.df_,
+                                      columns=self.categorical_.tolist())
+        else:
+            self.df_ = pd.get_dummies(self.df_,
+                                      columns=self.categorical_.tolist() +
+                                              self.ordinal_.tolist())
     
-    def _make_replacement_indicators(self):
-        if len(self.nan_indices_["nan_numeric_"].values()) > 0:
-            for column, v in zip(self.df_.columns, self.nan_indices_["nan_numeric_"].values()):
-                self.df_.loc[:, column + "_is_replaced"] = 0
-                self.df_.loc[v, column + "_is_replaced"] = 1
-        if len(self.nan_indices_["nan_categorical_"].values()) > 0:
-            for column, v in zip(self.df_.columns,self.nan_indices_["nan_categorical_"].values()):
-                self.df_.loc[:, column + "_is_replaced"] = 0
-                self.df_.loc[v, column + "_is_replaced"] = 1
-        if len(self.nan_indices_["nan_ordinal_"].values()) > 0:
-            for column, v in zip(self.df_.columns, self.nan_indices_["nan_ordinal_"].values()):
-                self.df_.loc[:, column + "_is_replaced"] = 0
-                self.df_.loc[v, column + "_is_replaced"] = 1
+    
+    
+    
+    
+    
