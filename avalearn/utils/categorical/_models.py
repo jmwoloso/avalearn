@@ -8,7 +8,8 @@ def logit(x):
 
 
 def _get_conditional_scores(dataframe=None, feature=None, target=None,
-                            positive_class=None, print_output=True):
+                            positive_class=None, print_output=True,
+                            master_dict=None):
     """
     Creates a single-variable Bayesian model from the provided feature. The
     feature is an indicator created from a particular level of the original
@@ -37,7 +38,7 @@ def _get_conditional_scores(dataframe=None, feature=None, target=None,
     
     # container for conditional scores for each level
     conditional_scores = dict()
-    
+    master_dict[feature] = dict()
     # find the conditional scores for each unique category level
     for level in dataframe.loc[:, feature].unique():
         # Original version: caused boolean index warning
@@ -96,5 +97,7 @@ def _get_conditional_scores(dataframe=None, feature=None, target=None,
             print("prob_of_true_given_level: {0}".format(prob_of_true_given_level))
             print("conditional_score: {0}".format(conditional_score))
 
-    return conditional_scores
-        
+    master_dict[feature] = conditional_scores
+    return master_dict
+
+

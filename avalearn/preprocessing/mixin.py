@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+import pandas as pd
 from sklearn.utils import check_random_state
 from .base import TreatmentDescriptionDataFrame, \
     DelayedDataFrame
@@ -9,8 +10,6 @@ from ..utils._validation import _check_dframe, _check_feature_target, \
     _check_int_keyword, _check_float_keyword, _check_str_keyword, \
     _check_min_feature_significance, _check_hc_threshold, \
     _check_ordinal_mapping, _check_cat_fill_value
-
-from ..utils._preprocessing import _make_indicators
 
 
 class TreatmentDesignMixin(object):
@@ -69,70 +68,109 @@ class TreatmentDesignMixin(object):
         self.categorical_fill_value = categorical_fill_value
         self.ordinal_fill_value = ordinal_fill_value
 
+    def fit(self, dataframe):
+        """
+        Create the treatment plan.
+        """
+        # input validation
+        self._validate_params(dataframe)
+        
+        # with input validated, create the TreatmentDescriptionDF object
+        self.TreatmentDescriptionDF_ = TreatmentDescriptionDataFrame()
+        self.DelayedDF_ = DelayedDataFrame()
+        
+        # copy the dataframe for modification
+        self.df_ = dataframe.copy()
+        
+        # get the indices for nan columns
+        self._get_nan_indices()
+        
+        # fill in missing values
+        self._fill_na()
+        
+        # make indicators for additional modeling and significance testing
+        self._make_indicators()
+        
+        # make indicators for whether a value replacement occured
+        self._make_replacement_indicators()
+        
+        return self
+    
+    def transform(self, dataframe):
+        """
+        Apply the treatment to the dataframe.
+        """
+        pass
+
+    def fit_transform(self, dataframe):
+        """
+        Create and apply the treatment plan.
+        """
+        pass
+
     def _validate_params(self, dataframe):
         """
         Validates the parameters passed in during initialization.
         """
         _check_dframe(dataframe=dataframe)
-
+    
         _check_min_feature_significance(self.significance,
                                         ["float between 0.0 and 1.0",
                                          "1/n_features",
                                          None])
-
+    
         # TODO: add enhancement to allow value to be set based upon the dataset instead of fixed int values
         _check_hc_threshold(self.high_cardinality_threshold,
                             ["int >= 0", None])
-
+    
         _check_ordinal_mapping(self.mapping,
                                [dict, None],
                                dataframe.columns.tolist())
-
+    
         _check_cat_fill_value(self.categorical_fill_value,
                               "categorical_fill_value")
-        
+    
         _check_float_keyword(self.unique_percent,
                              "unique_level_min_percent",
-                             [0,1])
-        
-        
+                             [0, 1])
+    
         _check_int_keyword(self.n_jobs,
                            "n_jobs",
                            [-1, np.inf])
-        
+    
         _check_int_keyword(self.ordinal_fill_value,
                            "ordinal_fill_value",
                            None)
-
+    
         _check_str_keyword(self.context,
                            "downstream_context",
                            ["pipeline", None])
-        
+    
         _check_str_keyword(self.high_cardinality_strategy,
                            "high_cardinality_strategy",
                            ["impact", "indicators"])
-
+    
         _check_str_keyword(self.novel_strategy,
                            "novel_level_strategy",
                            ["known", "zero", "nan", "rare", "pooled"])
-
+    
         _check_boolean(self.rare_pooling, "rare_level_pooling")
         _check_boolean(self.make_nans, "make_nan_indicators")
         _check_boolean(self.find_ordinals, "find_ordinals")
         _check_boolean(self.deduplicate, "remove_duplicates")
         _check_boolean(self.scaling, "feature_scaling")
         _check_boolean(self.feature_engineering, "feature_engineering")
-
+    
         self.remove_features_ = False if self.significance is None else True
-
+    
         self.features_, self.target_ = _check_feature_target(
             df_columns=dataframe.columns,
             features=self.features,
             target=self.target)
-
+    
         self.train_size_ = _check_train_test_size(self.train_size,
                                                   self.test_size)
-
+    
         self.numeric_, self.categorical_, self.ordinal_, self.mapping_, \
         self.nan_numeric_, self.nan_categorical_, self.nan_ordinal_ = \
             _check_column_dtypes(dataframe=dataframe,
@@ -142,65 +180,78 @@ class TreatmentDesignMixin(object):
                                  ordinals=self.ordinals,
                                  find_ordinals=self.find_ordinals,
                                  categorical_fill_value=self.categorical_fill_value)
-
+    
         self.random_state_ = check_random_state(self.random_state)
-
+    
         # TODO: finish validation routines
         # TODO: check cv, cv_type, cv_split_function, rare_level_significance, convert_dtypes, ordinals
-
-
-
-
-
-
+       
         return self
 
+    def _make_indicators(self):
+        if self.categorical_ is None and self.ordinal_ is None:
+            return self
+        elif self.categorical_ is None and self.ordinal_ is not None:
+            self.df_ = pd.get_dummies(self.df_,
+                                      columns=self.ordinal_.tolist())
+        elif self.ordinal_ is None and self.categorical_ is not None:
+            self.df_ = pd.get_dummies(self.df_,
+                                      columns=self.categorical_.tolist())
+        else:
+            self.df_ = pd.get_dummies(self.df_,
+                                      columns=self.categorical_.tolist() +
+                                              self.ordinal_.tolist())
+        return self
+    
+    def _get_nan_indices(self):
+        # get the indices of missing values
+        self.nan_indices_ = dict()
+    
+        self.nan_indices_["nan_numeric_"] = dict()
+        self.nan_indices_["nan_categorical_"] = dict()
+        self.nan_indices_["nan_ordinal_"] = dict()
+    
+        for column in self.nan_numeric_:
+            self.nan_indices_["nan_numeric_"][column + "_NaN"] = \
+                np.where(self.df_.loc[:, column].isnull())[0]
+    
+        for column in self.nan_categorical_:
+            self.nan_indices_["nan_categorical_"][column + "_NaN"] = \
+                np.where(self.df_.loc[:, column].isnull())[0]
+    
+        for column in self.nan_ordinal_:
+            self.nan_indices_["nan_ordinal_"][column + "_NaN"] = \
+                np.where(self.df_.loc[:, column].isnull())[0]
 
-    def fit(self, dataframe):
-        """
-        Create the treatment plan.
-        """
-        # input validation
-        self._validate_params(dataframe)
-        # with input validated, create the TreatmentDescriptionDF object
-        self.TreatmentDescriptionDF_ = TreatmentDescriptionDataFrame()
-        self.DelayedDF_ = DelayedDataFrame()
-        # copy the dataframe for modification
-        self.df_ = dataframe.copy()
-        
+        return self
+    
+    def _fill_na(self):
         # fill in missing values
         self.df_.loc[:, self.nan_numeric_] = \
-            self.df_.loc[:, self.nan_numeric_]\
+            self.df_.loc[:, self.nan_numeric_] \
                 .fillna(self.df_.loc[:, self.nan_numeric_].mean())
-        
+    
         self.df_.loc[:, self.nan_categorical_] = \
-            self.df_.loc[:, self.nan_categorical_]\
+            self.df_.loc[:, self.nan_categorical_] \
                 .fillna(value=self.categorical_fill_value)
-        
+    
         # apply mapping for ordinals
         self.df_.loc[:, self.nan_ordinal_] = \
-            self.df_.loc[:, self.nan_ordinal_]\
+            self.df_.loc[:, self.nan_ordinal_] \
                 .fillna(value=self.ordinal_fill_value)
         
-        # make indicators for additional modeling and significance testing
-        self.df_indicators_ = _make_indicators(dataframe=self.df_,
-                                        categorical_columns=self.categorical_,
-                                        ordinal_columns=self.ordinal_)
-        
         return self
-        
-        
-        
-
-
-    # def transform(self, dataframe):
-    #     """
-    #     Apply the treatment to the dataframe.
-    #     """
-    #     pass
-    #
-    # def fit_transform(self, dataframe):
-    #     """
-    #     Create and apply the treatment plan.
-    #     """
-    #     pass
+    
+    def _make_replacement_indicators(self):
+        if len(self.nan_indices_["nan_numeric_"].values()) > 0:
+            for column, v in zip(self.df_.columns, self.nan_indices_["nan_numeric_"].values()):
+                self.df_.loc[:, column + "_is_replaced"] = 0
+                self.df_.loc[v, column + "_is_replaced"] = 1
+        if len(self.nan_indices_["nan_categorical_"].values()) > 0:
+            for column, v in zip(self.df_.columns,self.nan_indices_["nan_categorical_"].values()):
+                self.df_.loc[:, column + "_is_replaced"] = 0
+                self.df_.loc[v, column + "_is_replaced"] = 1
+        if len(self.nan_indices_["nan_ordinal_"].values()) > 0:
+            for column, v in zip(self.df_.columns, self.nan_indices_["nan_ordinal_"].values()):
+                self.df_.loc[:, column + "_is_replaced"] = 0
+                self.df_.loc[v, column + "_is_replaced"] = 1
