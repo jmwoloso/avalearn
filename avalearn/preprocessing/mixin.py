@@ -85,14 +85,15 @@ class TreatmentDesignMixin(object):
         # get the indices for nan columns
         self._get_nan_indices()
 
-        # make indicators for whether a value replacement occured
-        self._make_replacement_indicators(dataframe)
-        
         # fill in missing values
         self._fill_na()
-        
+
+        # self._get_categorical_value_counts()
         # make indicators for additional modeling and significance testing
         self._make_indicators()
+
+        # make indicators for whether a value replacement occurred
+        self._make_replacement_indicators(dataframe)
         
         return self
     
@@ -172,7 +173,7 @@ class TreatmentDesignMixin(object):
                                                   self.test_size)
     
         self.numeric_, self.categorical_, self.ordinal_, self.mapping_, \
-        self.nan_numeric_, self.nan_categorical_, self.nan_ordinal_ = \
+        self.numeric_has_nan_, self.categorical_has_nan_, self.ordinal_has_nan_ = \
             _check_column_dtypes(dataframe=dataframe,
                                  features=self.features_,
                                  target=self.target_,
@@ -190,66 +191,135 @@ class TreatmentDesignMixin(object):
         # get the indices of missing values
         self.nan_indices_ = dict()
     
-        self.nan_indices_["nan_numeric_"] = dict()
-        self.nan_indices_["nan_categorical_"] = dict()
-        self.nan_indices_["nan_ordinal_"] = dict()
+        self.nan_indices_["numeric_has_nan_"] = dict()
+        self.nan_indices_["categorical_has_nan_"] = dict()
+        self.nan_indices_["ordinal_has_nan_"] = dict()
     
-        for column in self.nan_numeric_:
-            self.nan_indices_["nan_numeric_"][column + "_NaN"] = \
+        for column in self.numeric_has_nan_:
+            self.nan_indices_["numeric_has_nan_"][column] = \
                 np.where(self.df_.loc[:, column].isnull())[0]
     
-        for column in self.nan_categorical_:
-            self.nan_indices_["nan_categorical_"][column + "_NaN"] = \
+        for column in self.categorical_has_nan_:
+            self.nan_indices_["categorical_has_nan_"][column] = \
                 np.where(self.df_.loc[:, column].isnull())[0]
     
-        for column in self.nan_ordinal_:
-            self.nan_indices_["nan_ordinal_"][column + "_NaN"] = \
+        for column in self.ordinal_has_nan_:
+            self.nan_indices_["ordinal_has_nan_"][column] = \
                 np.where(self.df_.loc[:, column].isnull())[0]
-
-    def _make_replacement_indicators(self, dataframe):
-        for column in self.numeric_:
-            self.df_.loc[:, column + "_is_replaced"] = \
-                dataframe.loc[:, column].isnull().map({True: 1, False: 0})
-    
-        for column in self.categorical_:
-            self.df_.loc[:, column + "_is_replaced"] = \
-                dataframe.loc[:, column].isnull().map({True: 1, False: 0})
-    
-        for column in self.ordinal_:
-            self.df_.loc[:, column + "_is_replaced"] = \
-                dataframe.loc[:, column].isnull().map({True: 1, False: 0})
 
     def _fill_na(self):
         # fill in missing values
-        self.df_.loc[:, self.nan_numeric_] = \
-            self.df_.loc[:, self.nan_numeric_] \
-                .fillna(self.df_.loc[:, self.nan_numeric_].mean())
-    
-        self.df_.loc[:, self.nan_categorical_] = \
-            self.df_.loc[:, self.nan_categorical_] \
-                .fillna(value=self.categorical_fill_value)
-    
-        # apply mapping for ordinals
-        self.df_.loc[:, self.nan_ordinal_] = \
-            self.df_.loc[:, self.nan_ordinal_] \
-                .fillna(value=self.ordinal_fill_value)
+        if len(self.numeric_has_nan_) > 0:
+            self.nan_numeric_ = self.numeric_has_nan_ + "_clean"
+
+            self.df_ = self.df_.reindex(columns=[self.df_.columns.tolist() +
+                                                 self.nan_numeric_.tolist()],
+                                        fill_value=0)
+            
+            for c1, c2 in zip(self.nan_numeric_, self.numeric_has_nan_):
+                self.df_.loc[:, c1] = self.df_.loc[:, c2].copy()
+                self.df_.loc[:, c1] = self.df_.loc[:, c1].fillna(
+                    self.df_.loc[:, c1].mean())
+        else:
+            self.nan_numeric_ = pd.Index(list())
         
+        # no need to drop these as we're turning them into indicators anyway
+        # which will drop them
+        if len(self.categorical_has_nan_) > 0:
+            
+            self.df_.loc[:, self.categorical_has_nan_] = \
+                self.df_.loc[:, self.categorical_has_nan_] \
+                    .fillna(value=self.categorical_fill_value)
+        else:
+            self.nan_categorical_ = None
+    
+        # TODO: apply mapping for ordinals if present
+        # TODO: we should probably look earlier for mix/max ordinal values and set the fill value based upon that to prevent collisions
+        # TODO: this will have to change if we start allowing ordinal detection for non-int dtypes
+        if len(self.ordinal_has_nan_) > 0:
+            self.nan_ordinal_ = self.ordinal_has_nan_ + "_clean"
+            self.df_ = self.df_.reindex(columns=[self.df_.columns.tolist() +
+                                                 self.nan_ordinal_.tolist()],
+                                        fill_value=0)
+
+            for c1, c2 in zip(self.nan_ordinal_, self.ordinal_has_nan_):
+                self.df_.loc[:, c1] = self.df_.loc[:, c2].copy()
+                self.df_.loc[:, c1] = self.df_.loc[:, c1].fillna(
+                    self.df_.loc[:, c1].mean())
+        else:
+            self.nan_ordinal_ = None
+   
     def _make_indicators(self):
-        if self.categorical_ is None and self.ordinal_ is None:
-            return self
-        elif self.categorical_ is None and self.ordinal_ is not None:
-            self.df_ = pd.get_dummies(self.df_,
-                                      columns=self.ordinal_.tolist())
-        elif self.ordinal_ is None and self.categorical_ is not None:
+        # make indicators for replaced values for all dtypes
+        if self.categorical_ is None:
+            self.nan_categorical_ = None
+        else:
+            self.nan_categorical_ = self.categorical_has_nan_ + "_" + self.categorical_fill_value
             self.df_ = pd.get_dummies(self.df_,
                                       columns=self.categorical_.tolist())
-        else:
-            self.df_ = pd.get_dummies(self.df_,
-                                      columns=self.categorical_.tolist() +
-                                              self.ordinal_.tolist())
-    
-    
-    
+
+    def _make_replacement_indicators(self, dataframe):
+        if self.nan_numeric_ is not None:
+            self.numeric_replacement_indicators_ = self.numeric_has_nan_ + \
+                                                   "_replaced"
+
+            # add the rep indicator columns to the dataframe
+            self.df_ = \
+                self.df_.reindex(columns=[self.df_.columns.tolist() +
+                                          self.numeric_replacement_indicators_.tolist()],
+                                 fill_value=0)
+            
+            # add the indicator if that row value was replaced
+            for c1, c2 in zip(self.numeric_replacement_indicators_,
+                              self.numeric_has_nan_):
+                self.df_.loc[:, c1] = dataframe.loc[:, c2]\
+                    .isnull()\
+                    .map({True: 1,
+                          False: 0})
+                
+            # drop the original columns with NaN
+            self.df_.drop(labels=self.numeric_has_nan_.tolist(),
+                          inplace=True,
+                          axis=1)
+            
+        if self.nan_categorical_ is not None:
+            self.categorical_replacement_indicators_ = self.categorical_has_nan_ + \
+                                                       "_replaced"
+
+            # add the rep indicator columns to the dataframe
+            self.df_ = \
+                self.df_.reindex(columns=[self.df_.columns.tolist() +
+                                          self.categorical_replacement_indicators_.tolist()],
+                                 fill_value=0)
+
+            # add the indicator if that row value was replaced
+            for c1, c2 in zip(self.categorical_replacement_indicators_,
+                              self.categorical_has_nan_):
+                self.df_.loc[:, c1] = dataframe.loc[:, c2].isnull().map(
+                    {True: 1,
+                     False: 0})
+
+        if self.nan_ordinal_ is not None:
+            self.ordinal_replacement_indicators_ = self.ordinal_has_nan_ + \
+                                                   "_replaced"
+
+            # add the rep indicator columns to the dataframe
+            self.df_ = \
+                self.df_.reindex(columns=[self.df_.columns.tolist() +
+                                          self.ordinal_replacement_indicators_.tolist()],
+                                 fill_value=0)
+
+            # add the indicator if that row value was replaced
+            for c1, c2 in zip(self.ordinal_replacement_indicators_,
+                              self.ordinal_has_nan_):
+                self.df_.loc[:, c1] = dataframe.loc[:, c2].isnull().map(
+                    {True: 1,
+                     False: 0})
+
+            # drop the original columns with NaN
+            self.df_.drop(labels=self.ordinal_has_nan_.tolist(),
+                          inplace=True,
+                          axis=1)
     
     
     
