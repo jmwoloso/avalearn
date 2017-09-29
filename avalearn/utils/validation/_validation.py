@@ -4,6 +4,12 @@ _validation.py : validation routines for the avalearn package.
 """
 import pandas
 
+# TODO: make sure this stays up-to-date
+NOT_IMPLEMENTED = ["feature_engineering",
+                   "cv_split_function",
+                   "rare_level_significance",
+                   "convert_dtypes"]
+
 # general purpose validation functions
 def _check_dframe(dataframe=None):
     """
@@ -142,14 +148,6 @@ def _check_float_keyword(keyword=None, parameter=None, keyword_range=None):
                              .format(parameter,
                                      keyword_range[0],
                                      keyword_range[1]))
-       
-   
-    
-
-
-
-
-
 
 # keyword-specific validation functions
 def _check_min_feature_significance(keyword, param_values):
@@ -325,7 +323,26 @@ def _check_cat_fill_value(keyword="NaN", parameter=None):
 
 
 
-
+def _check_mixed_type_keyword(keyword="", value="", types=(),
+                              types_dict={}):
+    if not isinstance(value, types):
+        raise ValueError("`{}` must be one of {}".format(keyword,
+                                                         value))
+    elif isinstance(value, list):
+        pass
+    elif isinstance(value, dict):
+        pass
+    elif isinstance(value, str):
+        pass
+    elif isinstance(value, int):
+        pass
+    elif isinstance(value, float):
+        pass
+    elif isinstance(value, bool):
+        pass
+    elif keyword in NOT_IMPLEMENTED:
+        raise NotImplementedError("`{}` is not currently "
+                                  "implemented".format(keyword))
 
 
 
